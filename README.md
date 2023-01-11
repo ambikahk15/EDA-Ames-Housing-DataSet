@@ -1,4 +1,4 @@
-# EDA-Ames-Housing-DataSet
+# EDA-Ames-Housing-DataSet Analysis and Linear Machine learning model.
 EDA-Ames Housing Dataset Analysis and Linear modelling
 # Data description
 train and test dataset which are used to perform training and validation of linear model.
