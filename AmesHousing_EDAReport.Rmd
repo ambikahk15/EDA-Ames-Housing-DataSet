@@ -1,0 +1,1078 @@
+---
+title: "EDA-Ames Housing DataSet Analysis and Linear modelling."
+author: "Ambika Huluse Kapanaiah(u3227622)"
+date: "09/05/2021"
+output: 
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+<style type="text/css">
+  body{
+  font-size: 8pt;
+}
+</style>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(error = TRUE)
+```
+
+```{r, echo=FALSE,results='hide',warning=FALSE,message=FALSE}
+library(knitr)
+library(tidyverse)
+library(stringr)
+library(ggplot2)
+library(GGally)
+library(reshape2)
+library(naniar)
+library(car)
+library(DMwR2)
+library(modelr)
+```
+
+```{r, package_options, echo=FALSE, cache=FALSE, results='hide', warning=FALSE, comment=FALSE}
+rm(list = ls())
+cat("\014")
+for(i in 1:2){
+  Wrkng_Dir <- setwd(dirname(rstudioapi::getActiveDocumentContext()$path))}
+Wrkng_Dir
+```
+
+#### 1. Title and abstract:
+The Ames Housing Data Set is popular among Data Science world. Everyone is challenged to work on minimizing the RMSE value on test set. Similarly,in this report we study the dataset by applying various Exploratory Data Analysis and create appealing linear model with train and test data-set, which includes 81 features describing a wide range of characteristics of 1,460 homes in Ames, which were sold between 2006 and 2010. Along with this, this report also includes 10 problems which are identified as part of prediction of SalePrice based on various explanatory features. So, here we identify key features which are really affecting SalePrice, based on the information collected from various websites. All the websites referred for this project has been documented at the end of this report.
+
+#### 2.Information on the dataset:
+Loading and understanding the data.
+```{r , echo=TRUE,results='hide',echo=TRUE,results='hide',message=FALSE,warning=FALSE}
+Ames_train <- read.csv("data/train.csv",na.strings=c(""," ","NA"))
+Ames_test <- read.csv("data/test.csv",na.strings=c(""," ","NA"))
+```
+
+```{r , echo=FALSE,results='hide',message=FALSE,warning=FALSE}
+str(Ames_train)
+str(Ames_test)
+```
+The Ames Housing data set consists of 80 variables considering SalePrice as our interest as target feature. All the 79 explanatory variables focus mainly on the quantity and quality of many physical attributes of the property.Most of the features are mainly the type that naturally any customer who would want to buy a property (For Ex: When it is built, How big the property is? How about the living area sqft? Car parking? ? How many bathrooms and bedrooms available? Materials used for flooring roof and finishing? Location of the property? and so on).Few continuous variables which were showing the data on the various dimension of the property. LotArea, PoolArea,GarageArea and so on. Few categorical variables describing the quality and type of the overall amenities and materials used to build/renovate the property/street or neighborhood and nearby amenities and so on. Few discrete variables showed the number and location of amenities/bedrooms/bathrooms/kitchens located within the property.Also few temporal variables which says about the year of renovation/Garage built/Year built for the property.After careful observation there are major features present that effect SalePrice and could be summarized as property size, number of rooms,location, amenities, constructed materials, property's overall age  and condition of the property/amenities. 
+
+#### 3. Problem Identification: 
+##### These are the few DataScience problems, we came across while studying dataset and affect SalePrice based on the key features. We will find solution to each one of them once we finish data Analysis based on several questions which we think of.
+######  1. Problem 1: Identify which suburb/location had the biggest growth in SalePrice by plotting and examining the sale prices cross different suburbs.Has there been a trend on the type of house bought and had big hike in Sale price from 2006 to 2010
+######  2. Problem 2:	Analyze a possible pattern of SalePrice vs YrSold/MoSold, LotArea and/or some other variables which can reasonably be included considering Totl_Area instead of LotArea,SeasonSold instead of MonthSold here.
+######  3. Problem 3: Whether SaleCondition has any impact on the SalePrice,  Explain with Data Analysis and give insights on whether this feature needs to be considered.
+######  4. Problem 4 : Any change in SalePrice over the period  from 2006 to 2010 based on GarageQual
+######  5. Problem 5:Over the years.How the SalePrice changed based on Neighborhood and BldgType .Explain
+######  6. Problem 6:Was there any difference in SalePrice for the properties  sold between 2006 to 2010 based on LotShape/LandContour?  which is basically considered in Indian tradition, Just for curiosity have included this problem analysis.
+######  7. Problem 7:Check the seasonality of SalePrice based on MasVnrType used.
+######  8. Problem 8:Did the Age of Garage,  property made any difference in the Saleprice from 2006 2010.
+######  9. Problem 9:Do you think we could get good linear model with just considering Overall quality as a stand alone parameter for Sale Price prediction? Give thoughts.
+######  10. Problem 10: Use predictions from your final model to compare suburbs which have shown varying growth.  Or, to identify which suburbs have been growing the most over the last few years.
+
+#### 4. Project at Brief:
+Basically, it looks very easy to fit a model which could say the training data is having zero error. However, that kind of model would be very poor , because the relationship between the target variable sales price and the explanatory features are not properly defined by the model. The main focus here is to fit a linear model with the best R-squared value and low RMSE.
+Here is the cyclic process wherein started with data exploration followed by exploratory data analysis and missing value detection and imputation. Basically, during data exploration process, one need to thoroughly study the data and relationship to the target feature. Once finding linear relationship, next step is to check the correlation values of numeric features. Here this stage answers to the question , which variables are most strongly correlated with the response. These set of numeric features will be the strongest predictor of the SalePrice. Correlation heatmap is used here to capture correlation values.
+Usually, deep colors on the heatmap shows strong correlation. Missing values directly affect the linear modeling. The larger the number of missing values, the poorer the model will be.  If the percentage of missing value is high, that says the feature is almost not present in the property. The plots also provided to show the missing value proportion of the features. For example, the house with Pool and without Pool definitely accounts for the missing values and thereby will have discrepancies in the correlation to the SalePrice. These NA's are labeled as "Missing" in categorical features, and imputes with median value for numerical features.
+During feature engineering step, of Saleprice by taking logarithmic transformation done for model training.  Otherwise, SalePrice was rightly skewed with few outiliers. Some features was as strings , but were ordinal features. These were were converted to numerical levels which could be further fed into models. Next, with temporal features, able to impute all the year based columns except YearSold, just to represent the age of the garage and property. This helped in showing linearity to SalePrice. Also, created SeasonSold column so as to check on the SalePrice relation with the MonthSold. Along with this, a new column with total basement area+Ground living area is created and with this new feature, able to find linearity with SalePrice again.
+The 10 problems which are defined above are also solved later on. Linear modeling with the best features selected by deeper study into the data set using Exploratory data analysis helped further to choose and find the best model.
+With this knowledge, which is gained during data analysis helped in feature selection and able to explore on 4 models with different but very near high R-squared value around 0.8, I selected features for modeling mainly based on the high correlation values and good variability of explanatory variables.And finally trained the model and fitted the curve. Using test data set the prediction is analysed and found that the chosen model is the best one among other 3 which were with lower R-squared value.
+
+#### 5. Data Analysis:
+##### 1. Every data analysis starts with checking on the distrubution statics of the target feature. The distribution of SalePrice looks skewed positive, and have outliers. We could consider log    transformation in such a case.
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=TRUE, warning=FALSE, comment=FALSE, warning=FALSE}
+ggplot(Ames_train, aes(x = SalePrice, fill = ..count..)) + 
+  geom_histogram(bins=15) +
+  xlab("Sale Price in $") +
+  ylab("Number of observations") +
+  ggtitle("Histogram of sale prices")
+```
+
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, warning=FALSE}
+outliers_SP <- boxplot.stats(Ames_train$SalePrice)$out
+outliers_SP
+Ames_train$log_SalePrice <- log(Ames_train$SalePrice)
+Ames_test$log_SalePrice <- log(Ames_test$SalePrice)
+```
+  The log transformation of SalePrice looks like normally distributed now.
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, warning=FALSE}
+ggplot(Ames_train, aes(x = log_SalePrice, fill = ..count..)) + 
+  geom_histogram(bins=15) +
+  xlab("Sale Price in $") +
+  ylab("Number of observations") +
+  ggtitle("Histogram of sale prices")
+```
+
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, warning=FALSE}
+Ames_train_tidied <- data.frame(Ames_train) 
+Ames_train_tidied[sapply(
+  Ames_train_tidied, is.character)] <- lapply(
+    Ames_train_tidied[sapply(Ames_train_tidied, is.character)], 
+    as.factor)
+Ames_test[sapply(
+  Ames_test, is.character)] <- lapply(
+    Ames_test[sapply(Ames_test, is.character)], 
+    as.factor)
+Ames_train_tidied$Totl_Area <- Ames_train_tidied$TotalBsmtSF+
+  Ames_train$GrLivArea
+```
+##### 2. After careful observation, found that Total Area of the property can be added as new feature by adding features TotalBsmtSF and GrLivArea,
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=FALSE, warning=FALSE, comment=FALSE, warning=FALSE}
+Ames_train_tidied %>%
+  ggplot(aes(x=log_SalePrice,y=Totl_Area))+
+  geom_point()
+Ames_test$Totl_Area <- Ames_test$TotalBsmtSF+
+  Ames_test$GrLivArea
+```
+  There is medium to strong linear positive relation between Totl_Area and log_SalePrice.
+```{r , echo=FALSE, cache=FALSE, results=TRUE, warning=FALSE, comment=FALSE, warning=FALSE}
+ColswithNA <- Ames_train[,colSums(is.na(
+  Ames_train[ , 1:ncol(Ames_train)])) > 0]
+ColswithNA$SalePrice <- Ames_train$SalePrice
+ColswithNA$log_SalePrice <- Ames_train$log_SalePrice
+
+missing <- naniar::miss_var_summary(ColswithNA)
+
+missing <- missing %>%
+  filter(n_miss >0) %>%
+  mutate(pct_miss = round(pct_miss,1))
+
+```
+##### 3. Here is the missing value representation of numerical columns.
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=TRUE, warning=FALSE, comment=FALSE, warning=FALSE}
+ggplot(missing,aes(reorder(variable, -pct_miss),y=pct_miss,fill=variable))+
+  geom_bar(position="dodge", stat = "identity")+
+  ggtitle("Seasonwise SalePrice from 2006-2010")
+```
+For the numeric columns with missing values, comparing correlation value here with target feature.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, warning=FALSE}
+
+numeric_cols <- unlist(lapply(ColswithNA, is.numeric)) 
+colsNA_Numeric <-  ColswithNA[ , numeric_cols]
+colnames(colsNA_Numeric)
+```
+Considering to remove LotFrontage after careful observation. MasVnrArea and GarageYrBlt having good correlation with Saleprice.
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=FALSE, warning=FALSE, comment=FALSE,message=FALSE}  
+ggcorr(colsNA_Numeric,label=T)
+```
+
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=FALSE, warning=FALSE, comment=FALSE} 
+ggpairs(colsNA_Numeric, 
+        lower=list(continuous=wrap("smooth", colour="blue")),
+        diag=list(continuous=wrap("barDiag", fill="darkblue")))
+```
+LotFrontage has less correlation , moderate to weak positive relationship to SalePrice and has got many outliers.Missing value imputation for MasVnrArea is also done in this stage. As GarageYrBlt related to Time feature, we could consider with other temporal features to check further.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+drop <- c("LotFrontage")
+Ames_train_tidied = Ames_train_tidied[,!(names(Ames_train_tidied) %in% drop)]
+Ames_test = Ames_test[,!(names(Ames_test) %in% drop)]
+ncol(Ames_train_tidied)
+
+
+#imputing MasVnrArea NA's with median values
+Ames_train_tidied <- Ames_train_tidied %>%
+  mutate(MasVnrArea=ifelse(is.na(MasVnrArea),
+                           median(MasVnrArea, na.rm=TRUE),
+                           MasVnrArea))
+Ames_test <- Ames_test %>%
+  mutate(MasVnrArea=ifelse(is.na(MasVnrArea),
+                           median(MasVnrArea, na.rm=TRUE),
+                           MasVnrArea))
+```
+Here we complete missing values imputation for Numeric columns with NA's.
+
+##### 4.  Here comes the bigger categoric feature with missing values
+   Considering only categorical columns which have missing values.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+#categorical columns with NA
+categoric_cols <- ColswithNA %>% select(!colnames(colsNA_Numeric))
+ncol(categoric_cols)
+categoric_cols$SalePrice <- Ames_train$SalePrice
+#There are 16 categorical columns
+#Further checking how much percentage of missing values we have here.
+#which would help us to drop columns if the missing values are 50%
+#Missing value ratio in categoric features.
+
+missing <- naniar::miss_var_summary(categoric_cols)
+
+missing <- missing %>%
+  filter(n_miss >0) %>%
+  mutate(pct_miss = round(pct_miss,1))
+```
+Barplot of missing percentage for each of the categoric feature is shown here. There are 3 categorical features which shows more than 80% missing value
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+ggplot(missing,aes(reorder(variable, -pct_miss),y=pct_miss,fill=variable))+
+  geom_bar(position="dodge", stat = "identity")+
+  ggtitle("Seasonwise SalePrice from 2006-2010")
+catcols_withNA_80P <- categoric_cols[, colSums(
+  is.na(categoric_cols)) >= nrow(categoric_cols) * 0.8]
+colnames(catcols_withNA_80P)
+```
+
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+catcols_withNA_80P$SalePrice <- Ames_train$SalePrice
+```
+
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+catcols_withNA_80P %>% 
+  gather(variable, value,-SalePrice) %>%
+  ggplot(aes(factor(value), SalePrice, fill = factor(value))) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free_x", nrow = 1, strip.position = "bottom") +
+  theme(panel.spacing = unit(0, "lines"),
+        panel.border = element_rect(fill = NA),
+        strip.background = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none",
+        strip.placement = "outside")
+```
+Alley,PoolQC,Fence ,MiscFeature and  FireplaceQu having equal or more than 50% NA values and are having outliers. And also no much variability when related with SalePrice. We can directly drop these variables.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+drop <- c("Alley","PoolQC","Fence","MiscFeature")
+Ames_train_tidied = Ames_train_tidied[,!(names(Ames_train_tidied) %in% drop)]
+Ames_test = Ames_test[,!(names(Ames_test) %in% drop)]
+ncol(Ames_train_tidied)
+ncol(Ames_test)
+```
+
+##### 5. collecting all Temporal(Time/Year) related features for analysis here.After careful observation of all temoral variable, decided to convert GarageYrBuilt,Yrbuilt,YearRemod so that they represent the age of the garage and the property. As the YearSold already showing for which and all year we have data, taking difference between YrSold respectively with each feature here gives the age of the property and Garage area.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+Cols_Year <- Ames_train %>% 
+  dplyr:: select(grep("Yr", names(Ames_train)),
+                 grep("Year", names(Ames_train)),
+                 grep("*Yr", names(Ames_train)))
+
+for(cols in colnames(Cols_Year)){
+  if(cols!="YrSold"){
+    Ames_train_tidied[,cols] <- Ames_train_tidied$YrSold-Ames_train_tidied[,cols]
+    Ames_test[,cols] <- Ames_test$YrSold-Ames_test[,cols]}}
+
+Cols_Year <- Ames_train_tidied %>% 
+  dplyr:: select(grep("Yr", names(Ames_train_tidied)),
+                 grep("Year", names(Ames_train_tidied)),
+                 grep("*Yr", names(Ames_train_tidied)))
+
+Cols_Year$SalePrice <- Ames_train_tidied$SalePrice
+Cols_Year$log_SalePrice <- Ames_train_tidied$log_SalePrice
+```
+
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+ggpairs(Cols_Year[-2], 
+        lower=list(continuous=wrap("smooth", colour="green")),
+        diag=list(continuous=wrap("barDiag", fill="darkgreen")))
+```
+As the property ages interms of Garage or the building itself the SalePrice is decreasing. 
+Looks like all the 3 Yearwise columns are having negative strong relationship with SalePrice and so is important in predicting SalePrice,as all their correlation value is very high.
+
+Here checking for YrSold and SalePrice relationship.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+#checking the Sale Price versus YearSold
+Yrsold_SP <- Cols_Year %>% group_by(YrSold) %>%
+  summarise(Median_SP=median(SalePrice))
+```
+
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+ggplot(Yrsold_SP, aes(x=YrSold, y=Median_SP)) +
+  geom_line(color="red")+
+  geom_point()+
+  ggtitle("Yearwise sold properties Median Sale Price")+
+  xlab("YearSold")+
+  ylab("Median of Sale Price")
+```
+Sale Price decreasing from 2006 to 2010, which is also an important observation to consider.
+Usually property prices would hike due to neighborhood and amenities. But as the age of the property increases it also takes a toss on the quality of the overall interiors and exteriors of the building.
+
+There is another interesting column which we could create here is SeasonSold. There must be a possibility based on weather, may be there is dependency to SalePrice. MonthSold could be dropped as we create this SeasonSold column here.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+#Using moSold, SeasonSold column is been created .
+Winter <- c(1,2,12)
+autumn <- c(9:11)
+summmer <- c(6:8)
+spring <- c(3:5)
+
+Ames_train_tidied <- Ames_train_tidied %>% mutate(
+  SeasonSold = ifelse(MoSold %in% autumn, "autumn",
+                                ifelse(MoSold %in% Winter, "Winter",
+                                       ifelse(MoSold %in% summmer, "summmer",
+                                              "Spring"))))
+Ames_test <- Ames_test %>% mutate(
+  SeasonSold = ifelse(MoSold %in% autumn, "autumn",
+                      ifelse(MoSold %in% Winter, "Winter",
+                             ifelse(MoSold %in% summmer, "summmer",
+                                    "Spring"))))
+
+#dropping MoSold as I created SeasonSold
+drop <- c("MoSold")
+Ames_train_tidied = Ames_train_tidied[,!(names(Ames_train_tidied) %in% drop)]
+Ames_test = Ames_test[,!(names(Ames_test) %in% drop)]
+ncol(Ames_train_tidied)
+
+Cols_Year$SeasonSold <- Ames_train_tidied$SeasonSold
+
+Cols_Year <- Cols_Year %>% group_by(YrSold,SeasonSold) %>%
+  mutate(median_SP=median(SalePrice))
+```
+
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+ggplot(Cols_Year,aes(x=YrSold,y=SalePrice,fill=SeasonSold))+
+  geom_bar(position="dodge", stat = "identity")+
+  ggtitle("Seasonwise SalePrice from 2006-2010")
+```
+SeasonSold has very big impact on the SalePrice especially in 
+the year 2007 wherein during Winter and Sumar had peak Sale Prices for the properties sold followed by Spring and Autumn.Overall all the seasons with properties sold from 2006 to 2010 
+are having alost common trend except 2007.
+Imputation of Temporal variable. Filling missing values with median is done later.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+colSums(is.na(Cols_Year))
+
+#Imputing GarageYrBlt NA's with median values as it is skewed and have outliers.
+
+Ames_train_tidied <- Ames_train_tidied %>%
+  mutate(GarageYrBlt=ifelse(is.na(GarageYrBlt),
+                           median(GarageYrBlt, na.rm=TRUE),
+                           GarageYrBlt))
+
+Ames_test <- Ames_test %>%
+  mutate(GarageYrBlt=ifelse(is.na(GarageYrBlt),
+                            median(GarageYrBlt, na.rm=TRUE),
+                            GarageYrBlt))
+##Missing Values handling for Numric columns completed
+
+```
+Till now explored with whether any new features can be created. And also dealt with missing values.
+Imputation and feature selection for features with missing values.
+Keeping in mind that still categorical columns are not imputed until now.
+
+##### 5. Here analyzing numerical columns without missing values. Whether any feature could be dropped or not is decided based on correlation values with SalePrice.
+
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+
+#Numeric columns Analysis of columns not having NA's
+numeric_cols <- unlist(lapply(Ames_train_tidied, is.numeric)) 
+Cols_allNumrc <-  Ames_train_tidied[ , numeric_cols]
+ncol(Cols_allNumrc)
+colnames(Cols_allNumrc)
+
+#38 columns including Sale Price and ID are numeric and
+#removing  Yearwise columns as we have already analysed them
+#while removing the numeric cols with NA which we have already analysed.
+drop <- c("GarageYrBlt","YrSold","YearBuilt" ,
+          "YearRemodAdd","LotFrontage","MasVnrArea")
+Cols_allNumrc = Cols_allNumrc[,!(names(Cols_allNumrc) %in% drop)]
+
+#30 variables to Analyse. 
+```
+
+```{r , echo=FALSE, cache=FALSE, fig.width=25,fig.height=12,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+#Finding correlation with SalePrice
+ggcorr(Cols_allNumrc,label = T)
+```
+Most of the features which are having low correlation that is less than
++/-0.5 with SalePrice could be dropped here.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+ 
+#These columns could be dropped as there is no much relation with
+#the target variable.Removing Id column also
+
+drop <- c("MiscVal","PoolArea","ScreenPorch",
+          "EnclosedPorch","OpenPorchSF","WoodDeckSF",
+          "KitchenAbvGr","BedroomAbvGr","HalfBath",
+          "BsmtHalfBath","BsmtFullBath","LowQualFinSF",
+          "X2ndFlrSF","BsmtUnfSF","BsmtFinSF2","BsmtUnfSF",
+          "X3SsnPorch","OverallCond","LotArea","MSSubClass")
+
+#Analysing them once before dropping######################
+plot_drop <- Cols_allNumrc %>% 
+  select(drop)
+plot_drop$SalePrice <- Ames_train_tidied$SalePrice
+```
+
+```{r , echo=FALSE, cache=FALSE,fig.keep = 'none', warning=FALSE, comment=FALSE, message=FALSE}
+ggpairs(plot_drop, 
+        lower=list(continuous=wrap("smooth", colour="green")),
+        diag=list(continuous=wrap("barDiag", fill="darkgreen")))
+```
+
+As we could see the features having less than 0.5 correlation with SalePrice shows clear info on the scatterplot which is not printed here.(Please check R code) When Analysed further segregating them to discrete and continuous features, got more insights on them.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+
+#Dropping the numeric cols which are having less tha +/-0.5 correlation
+#with SalePrice after Analysis.
+
+Ames_train_tidied = Ames_train_tidied[,!(names(Ames_train_tidied) %in% drop)]
+ncol(Ames_train_tidied)
+Ames_test = Ames_test[,!(names(Ames_test) %in% drop)]
+ncol(Ames_train_tidied)
+Cols_allNumrc = Cols_allNumrc[,!(names(Cols_allNumrc) %in% drop)]
+colnames(Cols_allNumrc)
+
+#segregating rest of the numeric columns 
+#to continuous and discrete elements
+colnames(Cols_allNumrc)
+disc_cols <- c("OverallQual",
+               "FullBath",
+               "TotRmsAbvGrd","Fireplaces",
+               "GarageCars")
+
+cols_discrete <- data.frame(Cols_allNumrc) %>% select(disc_cols)
+cols_discrete$SalePrice <- Ames_train$SalePrice
+
+ncol(cols_discrete)
+#There are 5 columns which are discrete.
+```
+
+
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+ggpairs(cols_discrete, 
+        lower=list(continuous=wrap("smooth", colour="blue")),
+        diag=list(continuous=wrap("barDiag", fill="darkblue")))
+
+```
+
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+cols_discrete %>% 
+  gather(variable, value,-SalePrice) %>%
+  ggplot(aes(factor(value), SalePrice, fill = factor(value))) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free_x", nrow = 1, strip.position = "bottom") +
+  theme(panel.spacing = unit(0, "lines"),
+        panel.border = element_rect(fill = NA),
+        strip.background = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none",
+        strip.placement = "outside")
+```
+As the overall quality,Full bath and Garage Cars having positive strong relation with SalePrice.
+SalePrice is increasing positively with feature Fireplaces and TotRmsAbvGrd also have positive 
+strong relation and much variability with SalePrice
+
+Now dealing with continuous variables with exploratory data analysis.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+#continuous columns
+cols_continuous <- Cols_allNumrc %>% select(!disc_cols)
+ncol(cols_continuous)
+```
+
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+ggpairs(cols_continuous, 
+        lower=list(continuous=wrap("smooth", colour="yellow")),
+        diag=list(continuous=wrap("barDiag", fill="orange")))
+```
+
+All these continuous features has very strong positive linear relation with SalePrice. All the numerical columns analysis completes here.
+
+##### 6. Now considering all the categorical variables which are not having missing values.And even those with missing values are imputed here in this step.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+
+#features in categorical has to be analysed.
+cols_categoric <- Ames_train_tidied %>% select_if(negate(is.numeric))
+colnames(cols_categoric)
+cols_categoric$SalePrice  <- Ames_train_tidied$SalePrice
+
+#Fireplace can be removed as it has highest percentage of missing value
+#Have grouped into 4 groups just for visualisation purpose.
+#1st category will have categories what 
+#I feel are important from the buyers perspective
+cols_cat1_imp1 <- c("Street","LotShape","LandContour",  
+              "Utilities","Neighborhood", "BldgType","HouseStyle")
+
+cat1_imp1  <- Ames_train %>% select(cols_cat1_imp1)
+cat1_imp1$SalePrice <- Ames_train$SalePrice
+cat1_imp1$YrSold <- Ames_train_tidied$YrSold
+```
+
+As there are numerous categorical features, segregated here as important categories,
+internal and external, miscelleneous categories. This is just for visualisation purpose.
+```{r , echo=FALSE, cache=FALSE,fig.keep = 'none', warning=FALSE, comment=FALSE, message=FALSE}
+cat1_imp1 %>% 
+  gather(variable, value,-SalePrice) %>%
+  ggplot(aes(factor(value), SalePrice, fill = factor(value))) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free_x", nrow = 1, strip.position = "bottom") +
+  theme(panel.spacing = unit(0, "lines"),
+        panel.border = element_rect(fill = NA),
+        strip.background = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none",
+        strip.placement = "outside")
+
+
+```
+
+Utilities could be removed. because of no variability with SalePrice and many outliers when checked with boxplot which is not printed here.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+cols_cat1_imp2 <- c("RoofStyle","RoofMatl","MasVnrType","ExterQual",
+                    "ExterCond","BsmtCond","KitchenQual","GarageQual",
+                    "SaleType","SaleCondition")
+
+cat1_imp2  <- Ames_train %>% select(cols_cat1_imp2)
+cat1_imp2$SalePrice <- Ames_train$SalePrice
+cat1_imp2$YrSold <- Ames_train_tidied$YrSold
+
+```
+
+```{r , echo=FALSE, cache=FALSE,fig.keep = 'none', warning=FALSE, comment=FALSE, message=FALSE}
+cat1_imp2 %>% 
+  gather(variable, value,-SalePrice) %>%
+  ggplot(aes(factor(value), SalePrice, fill = factor(value))) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free_x", nrow = 1, strip.position = "bottom") +
+  theme(panel.spacing = unit(0, "lines"),
+        panel.border = element_rect(fill = NA),
+        strip.background = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none",
+        strip.placement = "outside")
+```
+
+Four columns here can be removed as there is no much variability when compared with SalePrice: BsmtCond,ExterCond, RoofStyle,RoofMatl are dropped at this stage.when checked with boxplot which is not printed here.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+drop <- c("BsmtCond","ExterCond", "RoofStyle","RoofMatl",
+          "HouseStyle", "Street","Utilities" )
+Ames_test = Ames_test[,!(names(Ames_test) %in% drop)]
+Ames_train_tidied = Ames_train_tidied[,!(names(Ames_train_tidied) %in% drop)]
+
+
+#miscellaneous category
+cols_cat2_misc <- c("MSZoning","LotConfig","LandSlope","Condition1","Condition2",
+                    "Heating","HeatingQC","CentralAir","Electrical","Functional",
+                    "Foundation","TotRmsAbvGrd", "FireplaceQu")
+
+cat2_misc <-  Ames_train_tidied %>% select(cols_cat2_misc)
+cat2_misc$SalePrice <- Ames_train_tidied$SalePrice
+cat2_misc$YrSold <- Ames_train_tidied$YrSold
+```
+
+```{r , echo=FALSE, cache=FALSE,fig.keep = 'none', warning=FALSE, comment=FALSE, message=FALSE}
+cat2_misc %>% 
+  gather(variable, value,-SalePrice) %>%
+  ggplot(aes(factor(value), SalePrice, fill = factor(value))) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free_x", nrow = 1, strip.position = "bottom") +
+  theme(panel.spacing = unit(0, "lines"),
+        panel.border = element_rect(fill = NA),
+        strip.background = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none",
+        strip.placement = "outside")
+```
+
+TotRmsAbvGrd has very good variability compared to other features here.
+dropping everything except TotRmsAbvGrd here.when checked with boxplot which is not printed here.
+
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+drop <- c("MSZoning","LotConfig","LandSlope","Condition1","Condition2",
+          "Heating","HeatingQC","CentralAir","Electrical","Functional",
+          "Foundation", "FireplaceQu")
+Ames_test = Ames_test[,!(names(Ames_test) %in% drop)]
+Ames_train_tidied = Ames_train_tidied[,!(names(Ames_train_tidied) %in% drop)]
+
+
+#External category features
+cols_cat3_Ext <- c("PavedDrive", "GarageType","GarageFinish","GarageCond",
+                   "BsmtQual","BsmtExposure","BsmtFinType1", 
+                   "BsmtFinType2","Exterior1st","Exterior2nd")
+
+cat3_Ext <-  Ames_train_tidied %>% select(cols_cat3_Ext)
+cat3_Ext$SalePrice <- Ames_train_tidied$SalePrice
+cat3_Ext$YrSold <- Ames_train_tidied$YrSold
+```
+
+```{r , echo=FALSE, cache=FALSE,fig.width=23,fig.height=10, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+cat3_Ext %>% 
+  gather(variable, value,-SalePrice) %>%
+  ggplot(aes(factor(value), SalePrice, fill = factor(value))) +
+  geom_boxplot() +
+  facet_wrap(~variable, scales = "free_x", nrow = 1, strip.position = "bottom") +
+  theme(panel.spacing = unit(0, "lines"),
+        panel.border = element_rect(fill = NA),
+        strip.background = element_blank(),
+        axis.title.x = element_blank(),
+        legend.position = "none",
+        strip.placement = "outside")
+```
+
+BsmtQual looks better related compared to all other features here. Removing all other except BsmtQual here. Once we select features from categorical features, Imputation for all the categorical features done at this stage.
+
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+
+drop <- c("PavedDrive", "GarageType","GarageFinish","GarageCond",
+                   "BsmtExposure","BsmtFinType1", 
+                   "BsmtFinType2","Exterior1st","Exterior2nd")
+Ames_test = Ames_test[,!(names(Ames_test) %in% drop)]
+Ames_train_tidied = Ames_train_tidied[,!(names(Ames_train_tidied) %in% drop)]
+
+
+#imputing missing values of categorical variables with replacing NA to Missing.
+
+replace_factor_na <- function(x){
+  x <- as.character(x)
+  x <- if_else(is.na(x), "Missing", x)
+  x <- as.factor(x)
+}
+
+Ames_train_tidied <- Ames_train_tidied %>%
+  mutate_if(is.factor, replace_factor_na)
+
+Ames_test <- Ames_test %>%
+  mutate_if(is.factor, replace_factor_na)
+
+colSums(is.na(Ames_train_tidied))
+colSums(is.na(Ames_test))
+
+for (cols in which(sapply(Ames_test, is.numeric))) {
+  for (row in which(is.na(Ames_test[, cols]))) {
+    Ames_test[row, cols] <- median(Ames_test[[cols]],
+                                           na.rm = TRUE)}}
+
+#Missing values imputation completed
+colnames(Ames_train_tidied)
+colnames(Ames_test)
+```
+
+
+##### 7. Further Exploratory data analysis done at this step. Deeper understanding and finding some of the solutions to the problems identified at the beginning of this project.
+During the first stage of data analysis , the decissions are taken carefuly. so that it doesnt 
+take much of the effort here.
+
+##### Problem 1: Identify which suburb/location had the biggest growth in SalePrice by plotting and examining the sale prices cross different suburbs.Has there been a trend on the type of house bought and had big hike in Sale price from 2006 to 2010.
+```{r , echo=FALSE, cache=FALSE,fig.width=23,fig.height=10, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+
+Ames_train_tidied %>%
+  group_by(Neighborhood,YrSold) %>%
+  summarise(med_SP=median(log_SalePrice)) %>% 
+  ggplot(aes(YrSold,med_SP,color=factor(Neighborhood))) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(~Neighborhood)+
+  ggtitle("SalePrice based on GarageQual and Garage Age") +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ylab("Sale Price $")
+```
+
+1) The suburb Somerst had increaing trend till 2009, in 2010 the price dropped
+2) Noridge also has increasing Saleprice as trend but in 2009 it is decreased.
+3) NAmes has slight increasing trend every year.
+So there must be other features which are affecting SalePrice here along with 
+Neighborhood(suburb/location) of the property.
+
+
+##### Problem 2:	Analyze a possible pattern of SalePrice vs YrSold/MoSold, LotArea and/or some other variables which can reasonably be included considering Totl_Area instead of LotArea, SeasonSold instead of MonthSold
+
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=10, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+Ames_train_tidied %>%
+  ggplot(aes(x = SeasonSold , y = Totl_Area,col = log_SalePrice)) +
+  geom_line()+
+  geom_point() +
+  facet_wrap(~ YrSold , scales = "free") +
+  scale_color_continuous(name="Sale Price in $",
+                         low="yellow",
+                         high="darkblue")+
+  theme_light()
+```
+1) In 2006 during Summer the SalePrice have seen extreme peak looks like outliers, However, all the season has touched max Saleprice around 4000$ for the properties sold which are having bigger Totl_Area(Ground Living and Total Basement Area)
+2) In 2008 All the Seasons had very less Saleprices even for the properties which are big in Totl_Area, The average log_Saleprice was around 4000$
+3) In 2009 all the seasons had peaks of almost 5000$ for the properties with lasrger Totl_Area
+
+
+##### Problem 3: Whether SaleCondition has any impact on the SalePrice,Explain with Data Analysis and give insights on whether this feature needs to be considered.
+
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+
+ggplot(Ames_train_tidied,aes(x=SalePrice))+
+  geom_histogram(aes(fill=SaleCondition),
+                     position=position_stack(), binwidth = 10000,
+                 colour="yellow")+
+  ggtitle("Median Saleprice based on SaleCondition")
+```
+
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+ggplot(Ames_train_tidied,aes(SaleCondition,SalePrice,fill=SaleCondition))+
+  geom_boxplot()+
+  ggtitle("Median Saleprice across SaleCondition")
+```
+
+1) Definitely there is a relation between SalePrice and SaleCondition
+2) Normal Sale Varied with lot of outliers. 
+3) Family	Sale between family members had extreme decrease in SalePrices. 
+4) Similary, with Abnorml	Abnormal Sale - may be due to trade,short sale, foreclosure
+
+##### Problem 4 : Any change in SalePrice over the period from 2006 to 2010 based on GarageQual
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+  ggplot(Ames_train_tidied, aes(x = YrSold,
+                                y = log_SalePrice, fill = factor(GarageQual))) +
+  geom_bar(position = "stack", stat = "identity") +
+  ggtitle("Property sale Price in $ by GarageQuality") +
+  ylab("Sale Price $") +
+  xlab("Year Sold") +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+        axis.title.x = element_text(size = 12, hjust = 0.5),
+        axis.title.y = element_text(size = 12, hjust = 0.5),
+        legend.position ="right",
+        axis.text.x = element_text(angle = 30,  
+                                   vjust = 1, 
+                                   size = 6, 
+                                   hjust = 1)) +
+  scale_fill_discrete(name="Garage Quality")
+```
+1) Definitely there was a change of SalePrice over years. During 2006 to 2009
+2) The log_SalePrice for Average qualaty Garage properties sold around for 3500$
+3) In 2010 suddenly there is drop in SalePrice for even the Garage with 
+   excellent quality, may be due to the age of the Garage.
+  
+
+
+##### Problem 5:Over the years.How the SalePrice changed based on Neighborhood and BldgType .Explain
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+  Ames_train_tidied %>%
+    group_by(Neighborhood, BldgType,YrSold) %>%
+    summarise(med_SP= median(SalePrice)) %>%
+    ggplot(aes(YrSold, med_SP, fill = BldgType)) +
+    geom_bar(position="dodge", stat = "identity") +
+    facet_wrap( ~ Neighborhood ) +
+    ggtitle("SalePrice from 2006-2010 based on Neighborhood and BldgType") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    ylab("Sale Price $")
+```  
+1) Buiding Type 1Fam has been sold in Neighborhoods are BrkSide, ClearCr, Gilbert, IDOTRR, NoRidge,
+   NWAmes,Timber, NRidgHt, StoneBr and so on
+2) In ClearCr Gilbert,Timber NoRidge location only buildingtype of 1Fam looks like trendy
+   throughout from 2006 to 2010 The Sale price is almost Same in every year.
+3) In Suburb Blmngtn CollgCr StoneBr, Somerst the building type TwnhsE, 1Fam 
+   looks like trendy. The saleprice is almost same for both building type from 2006-2010
+  
+
+##### Problem 6:Was there any difference in SalePrice for the properties sold between 2006 to 2010 based on LotShape/LandContour?which is basically considered in Indian tradition, Just for curiosity have included this problem analysis.
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE} 
+  Ames_train_tidied %>% 
+    group_by(LandContour, LotShape,YrSold) %>%
+    summarise(med_SP= median(log_SalePrice))  %>%
+    gather(variable, value,-med_SP,-YrSold) %>%
+    ggplot(aes(variable, med_SP, fill = factor(value))) +
+    geom_boxplot() +
+    facet_wrap( ~ YrSold ) +
+    ggtitle("SalePrice from 2006-2010 based on LandContour and LotShape") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    ylab("log_Sale Price $")
+```
+Looks like LandContour and Landshape also has prominent dependency on SalePrice in 2006, 2009 and 2010
+Which are two of the majour features to be considered for modeling.
+  
+##### Problem 7:Check the seasonality of SalePrice based on MasVnrType used.
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+  Ames_train_tidied %>% 
+    group_by(YrSold,SeasonSold) %>% 
+    gather(variable,value ,-MasVnrType,-SalePrice,-SeasonSold,-YrSold) %>%
+    ggplot(aes(SeasonSold,SalePrice , fill=factor(MasVnrType))) +
+    geom_boxplot() +
+    facet_wrap( ~ YrSold ) +
+    ggtitle("SalePrice from 2006-2010 based on seasonality and MasVnrType") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    ylab("Sale Price $")
+```
+Very Slight Variation of SalePrice when it comes to  MasVnrType
+Saleprice almost stays similar in all seasons with no much variation here.
+
+##### Problem 8:Did the Age of Garage,  property made any difference in the Saleprice from 2006 2010.  
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=10,results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+  Ames_train_tidied %>% 
+    ggplot(aes(GarageYrBlt,SalePrice,color=factor(GarageQual))) +
+    geom_point() +
+    geom_smooth()+
+    ggtitle("SalePrice based on GarageQual and Garage Age") +
+    theme(plot.title = element_text(hjust = 0.5)) +
+    ylab("Sale Price $")
+```  
+Definitely there is strong relation which negative. As the Garage Ages
+The SalePrice is decreasing. Most of the Garages also are typical/Average quality
+from the beginning of the 2006 data.
+
+###############################
+
+##### Problem 9:Do you think we could get good linear model with just considering Overall quality as a stand alone parameter for Sale Price prediction? Give thoughts
+```{r , echo=FALSE, cache=FALSE,fig.width=20,fig.height=8, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+ggplot(Ames_train_tidied,aes(x=OverallQual,y=log_SalePrice))+
+  geom_point()
+```
+
+```{r , echo=TRUE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+model <- lm(Ames_train_tidied$log_SalePrice ~ Ames_train_tidied$OverallQual,
+            Ames_train_tidied)
+summary(model)
+```
+Even though RMSE is 0.2303 the R-squared: 0.6678, which cannot be considered as a good linear model just by considering the OverallQuality.
+
+##### The problem 10 will be solved once fitting the model is completed.
+
+##### 8. Linear Modeling:
+
+Here considered features with strong correlation and good variability to SalePrice.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+
+####################----------Linear Modeling------------######################
+
+#Removing Id column from both train and test data set
+drop <- c("Id")
+Ames_train_tidied = Ames_train_tidied[,!(names(Ames_train_tidied) %in% drop)]
+Ames_test = Ames_test[,!(names(Ames_test) %in% drop)]
+ncol(Ames_train_tidied)
+ncol(Ames_test)
+
+colnames(Ames_train_tidied)
+colnames(Ames_test)
+
+
+model_Ames_train_tidied<- lm(Ames_train_tidied$log_SalePrice ~ Ames_train_tidied$LotShape + 
+                                 Ames_train_tidied$Neighborhood +
+                                 Ames_train_tidied$BldgType +
+                                 Ames_train_tidied$OverallQual +
+                                 Ames_train_tidied$FullBath +
+                                 Ames_train_tidied$KitchenQual +
+                                 Ames_train_tidied$TotRmsAbvGrd + 
+                                 Ames_train_tidied$Fireplaces+
+                                 Ames_train_tidied$GarageCars+
+                                 Ames_train_tidied$GarageArea +
+                                 Ames_train_tidied$YrSold +
+                                 Ames_train_tidied$Totl_Area +
+                                 Ames_train_tidied$SeasonSold,Ames_train_tidied)
+```
+
+With the first fitted model, was able to achieve the  R square=0.8599  and RMSE=0.1519 value.
+```{r , echo=TRUE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+summary(model_Ames_train_tidied) 
+```
+
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+
+mode2_Ames_train_tidied<- lm(Ames_train_tidied$log_SalePrice ~ Ames_train_tidied$LotShape + 
+                                 Ames_train_tidied$LandContour +
+                                 Ames_train_tidied$Neighborhood +
+                                 Ames_train_tidied$BldgType +
+                                 Ames_train_tidied$OverallQual +
+                                 Ames_train_tidied$YearBuilt +
+                                 Ames_train_tidied$YearRemodAdd +
+                                 Ames_train_tidied$MasVnrType +
+                                 Ames_train_tidied$MasVnrArea +
+                                 Ames_train_tidied$ExterQual +
+                                 Ames_train_tidied$BsmtQual +
+                                 Ames_train_tidied$BsmtFinSF1 +
+                                 Ames_train_tidied$TotalBsmtSF +
+                                 Ames_train_tidied$X1stFlrSF +
+                                 Ames_train_tidied$GrLivArea +
+                                 Ames_train_tidied$FullBath +
+                                 Ames_train_tidied$KitchenQual +
+                                 Ames_train_tidied$TotRmsAbvGrd + 
+                                 Ames_train_tidied$Fireplaces+
+                                 Ames_train_tidied$GarageYrBlt+
+                                 Ames_train_tidied$GarageCars+
+                                 Ames_train_tidied$GarageArea +
+                                 Ames_train_tidied$YrSold +
+                                 Ames_train_tidied$Totl_Area ,Ames_train_tidied)
+```
+With the second fitted model, was able to achieve the  R square=0.8772  and RMSE=0.1431 value.
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+  summary(mode2_Ames_train_tidied) 
+```
+
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+  
+mode3_Ames_train_tidied<- lm(Ames_train_tidied$log_SalePrice ~ Ames_train_tidied$OverallQual + 
+                                 Ames_train_tidied$YearBuilt +
+                                 Ames_train_tidied$Totl_Area +
+                                 Ames_train_tidied$YearRemodAdd +
+                                 Ames_train_tidied$MasVnrArea +
+                                 Ames_train_tidied$BsmtFinSF1 +
+                                 Ames_train_tidied$TotalBsmtSF +
+                                 Ames_train_tidied$GrLivArea +
+                                 Ames_train_tidied$X1stFlrSF +
+                                 Ames_train_tidied$FullBath +
+                                 Ames_train_tidied$Fireplaces +
+                                 Ames_train_tidied$GarageYrBlt +
+                                 Ames_train_tidied$YrSold +
+                                 Ames_train_tidied$BldgType +
+                                 Ames_train_tidied$OverallQual +
+                                 Ames_train_tidied$MasVnrType +
+                                 Ames_train_tidied$ExterQual + 
+                                 Ames_train_tidied$KitchenQual+
+                                 Ames_train_tidied$GarageQual+
+                                 Ames_train_tidied$SaleType+
+                                 Ames_train_tidied$SaleCondition,Ames_train_tidied)
+```
+With the third fitted model, was able to achieve the  R square=0.8507   and RMSE=0.1567 value.
+```{r , echo=TRUE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+  summary(mode3_Ames_train_tidied)
+```
+ 
+```{r , echo=FALSE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE} 
+mode4_Ames_train_tidied<- lm(Ames_train_tidied$log_SalePrice ~ Ames_train_tidied$LotShape + 
+                                 Ames_train_tidied$LandContour +
+                                 Ames_train_tidied$Neighborhood +
+                                 Ames_train_tidied$BldgType +
+                                 Ames_train_tidied$OverallQual +
+                                 Ames_train_tidied$YearBuilt +
+                                 Ames_train_tidied$YearRemodAdd +
+                                 Ames_train_tidied$MasVnrType +
+                                 Ames_train_tidied$MasVnrArea +
+                                 Ames_train_tidied$ExterQual +
+                                 Ames_train_tidied$BsmtQual +
+                                 Ames_train_tidied$BsmtFinSF1 +
+                                 Ames_train_tidied$TotalBsmtSF +
+                                 Ames_train_tidied$X1stFlrSF +
+                                 Ames_train_tidied$GrLivArea +
+                                 Ames_train_tidied$FullBath +
+                                 Ames_train_tidied$KitchenQual +
+                                 Ames_train_tidied$TotRmsAbvGrd + 
+                                 Ames_train_tidied$Fireplaces+
+                                 Ames_train_tidied$GarageYrBlt+
+                                 Ames_train_tidied$GarageCars+
+                                 Ames_train_tidied$GarageArea +
+                                 Ames_train_tidied$GarageQual +
+                                 Ames_train_tidied$YrSold +
+                                 Ames_train_tidied$SaleType +
+                                 Ames_train_tidied$SaleCondition +
+                                 Ames_train_tidied$Totl_Area +
+                                 Ames_train_tidied$SeasonSold,Ames_train_tidied)
+```
+##### mode4_Ames_train_tidied is the best fit with RMSE=0.1401 # and R^2=0.884 compared to other fitted models for test data set-> lm
+
+There are few outliers as following residual shows in the fourth model.
+```{r , echo=TRUE, cache=FALSE, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+  outlierTest(mode4_Ames_train_tidied)
+  #There are few outliers.
+```
+With the third fitted model, was able to achieve the  R square=0.884 and RMSE=0.1401 value.
+```{r , echo=TRUE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+  summary(mode4_Ames_train_tidied) 
+``` 
+Here is the linear regression,residual and cook's distance plot for the best fitted model.
+```{r , echo=FALSE, cache=FALSE, results=TRUE, fig.width=20,fig.height=8, warning=FALSE, comment=FALSE, message=FALSE}
+  plot(mode4_Ames_train_tidied,1)
+  plot(mode4_Ames_train_tidied,3)
+``` 
+
+When predicted with test dataset, I got the R square-0.8973 and RMSE=0.1375 value which is very near to the fitted model.
+```{r , echo=FALSE, cache=FALSE, results=FALSE,fig.keep = 'none', warning=FALSE, comment=FALSE, message=FALSE}
+plot(mode4_Ames_train_tidied,2)  
+plot(mode4_Ames_train_tidied,4)
+model_Ames_test<- lm(Ames_test$log_SalePrice ~ Ames_test$LotShape + 
+                         Ames_test$LandContour +
+                         Ames_test$Neighborhood +
+                         Ames_test$BldgType +
+                         Ames_test$OverallQual +
+                         Ames_test$YearBuilt +
+                         Ames_test$YearRemodAdd +
+                         Ames_test$MasVnrType +
+                         Ames_test$MasVnrArea +
+                         Ames_test$ExterQual +
+                         Ames_test$BsmtQual +
+                         Ames_test$BsmtFinSF1 +
+                         Ames_test$TotalBsmtSF +
+                         Ames_test$X1stFlrSF +
+                         Ames_test$GrLivArea +
+                         Ames_test$FullBath +
+                         Ames_test$KitchenQual +
+                         Ames_test$TotRmsAbvGrd + 
+                         Ames_test$Fireplaces+
+                         Ames_test$GarageYrBlt+
+                         Ames_test$GarageCars+
+                         Ames_test$GarageArea +
+                         Ames_test$GarageQual +
+                         Ames_test$YrSold +
+                         Ames_test$SaleType +
+                         Ames_test$SaleCondition +
+                         Ames_test$Totl_Area +
+                         Ames_test$SeasonSold,Ames_test)
+```
+
+```{r , echo=TRUE, cache=FALSE, results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+  summary(model_Ames_test) 
+```
+
+
+```{r , echo=TRUE, cache=FALSE, fig.height=3,results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+  plot(model_Ames_test,1)
+  plot(model_Ames_test,3)
+```
+
+Here is the comparision of RMSE values of both fitted model and test dataset.
+```{r , echo=TRUE, cache=FALSE, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+  rmse(mode4_Ames_train_tidied,Ames_train_tidied)
+  rmse(model_Ames_test,Ames_test)
+```
+
+
+##### predicting test dataset and plotting residuals
+
+```{r , echo=FALSE, cache=FALSE, results=FALSE,fig.height=10,fig.keep = 'none' ,warning=FALSE, comment=FALSE, message=FALSE}  
+plot(model_Ames_test,2)
+plot(model_Ames_test,4)
+  lmpred <- predict(model_Ames_test, newdata = Ames_test)
+  lmdata <- Ames_test %>% mutate(y = log_SalePrice) %>% 
+    mutate(ybar = lmpred) %>% mutate(diff = abs(y - ybar))
+  
+  badlmdata <- lmdata %>% filter(diff > 1.5) %>% arrange(desc(diff))
+```
+
+```{r , echo=FALSE, cache=FALSE, fig.width=20,fig.height=8,results=FALSE, warning=FALSE, comment=FALSE, message=FALSE}
+  lmresiduals <- ggplot(lmdata, aes(x = y, y = y-ybar), col = diff) +
+    geom_point(aes(x = y, y = y-ybar, color = diff)) +
+    geom_point(data = badlmdata, colour="red") +
+    scale_color_gradient(name = "|y - ybar|", limits = c(0, 1.5)) +
+    geom_abline(slope = 1, intercept = 0) +
+    xlab("y") +
+    ylab("y-ybar") +
+    ggtitle("Linear model residuals") +
+    theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+          axis.title.x = element_text(size = 12, hjust = 0.5),
+          axis.title.y = element_text(size = 12, hjust = 0.5),
+          legend.position = "right",
+          legend.spacing.y = unit(0.5, 'cm'))
+  
+  lmresiduals
+```  
+
+Once again checking here on the RMSE value of residuals.
+```{r , echo=FALSE, cache=FALSE, results=TRUE, warning=FALSE, comment=FALSE, message=FALSE}
+  sqrt(mean((Ames_test$log_SalePrice - lmpred) ^ 2))
+```
+
+
+##### Problem 10: Use predictions from your final model to compare suburbs which have shown varying growth. Or, to identify which suburbs have been growing the most over the last few years.
+  
+#### According the fitted final model  the formula for prediction of SalePrice is as follows.
+  
+#### SalePrice = (-3.479e-02)*NeighborhoodBlueste+1.318e+01
+#### SalePrice = ( -9.795e-02)*NeighborhoodBrDale+1.318e+01
+#### SalePrice = (1.237e-01)*NeighborhoodVeenker+1.318e+01
+#### and so on
+  
+#### so Based on the Neighbourhood value in test dataset SalePrice will be predicted. Similary the formulas could be derived with each and every dependent feature to predict SalePrice. The final formula would be as follows.
+
+##### as Multiple linear models will follow the general form 
+##### y = a1x1 + a2x2 + . + b
+##### SalePrice = a1*Neighborhood + a2*OverallQual + b....and so on
+##### while a1= feature1*coefficient+/-intercept and so on wheere feature=Neighborhood and coefficient and intercepts are the respective estimations using linear modeling. 
+
+
+##### Conclusion:
+By running analysis gathering and including multiple methods of data processing and alalysis techniques, I have determined an acceptable multiple linear regression model to the dataset.
+Firstly, I created 4 models with train dataset which I tidied. Based on the characteristics of the features I could create 4 models.
+##### The first model having R square value of 0.8599 and RMSE: 0.1519.
+##### The second model having R square value of 0.8772 and RMSE: 0.1431. 
+##### The third model having R square value of 0.8507 and RMSE: 0.1567.
+##### The fourth model having R square value of 0.884 and RMSE: 0.1401 
+I basically selected features based on strong correlation with the SalePrice and
+Variabilty in the distribution to the SalePrice. Finally, I choose fourth model
+as the best model to fit and predit the values. Later, predicted with test dataset with the best model and plotted residuals, to check whether the prediction based on the fitted model is near to the absolute one. Here considered log_SalePrice instead of SalePrice. With SalePrice considered for modeling gave RMSE=30020 and R-squared=0.8654, it is best to use log transformation of SalePrice.
+
+If any future work conducted, I would like to work on multiple regression techniques, not only on linear regression. That would help me analyze and consider the rest of the features which I dropped here while doing linear regression decisions.
+
+##### References: Big vote of thanks to all the references mentioned below here. Without which I would have not successfully able to complete linear modelling for multivariable data set.
+
+
+http://jse.amstat.org/v19n3/decock.pdf
+http://stackoverflow.com/
+https://rpubs.com/RobbyS/622233
+https://scholarworks.calstate.edu/downloads/fx719m836
+https://www.youtube.com/watch?v=wR4Xfwjr-3Y&list=LL&index=14
+https://nycdatascience.com/
+
+
+Note: As there was limited number of pages to be submitted, few of the plots are not printed. Please enable them to check or check the R code submitted along with the RMarkdown file. As the report file was with 25 pages, I tried to reduce printing the number of plots and font size.
